@@ -1,4 +1,4 @@
-"""Streamlit UBI Risk Dashboard — dark theme. Run: streamlit run dashboard/app.py"""
+"""Streamlit UBI Risk Dashboard — light minimalist theme. Run: streamlit run dashboard/app.py"""
 
 import re
 import sys
@@ -22,85 +22,56 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Global CSS ────────────────────────────────────────────────────────────────
+# ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-/* ─── Background ──────────────────────────────────────── */
+/* ─── App background ──────────────────────────────── */
 .stApp,
 [data-testid="stAppViewContainer"],
 [data-testid="stHeader"],
 .main {
-    background-color: #0f1117 !important;
+    background-color: #F8F9FA !important;
 }
 .main .block-container {
     padding: 2rem 3rem 1rem 3rem;
     max-width: 1200px;
 }
 
-/* ─── Sidebar ─────────────────────────────────────────── */
+/* ─── Sidebar ─────────────────────────────────────── */
 [data-testid="stSidebar"] {
-    background-color: #1a1d2e !important;
-    border-right: 1px solid #252838;
+    background-color: #FFFFFF !important;
+    border-right: 1px solid #E8E8E8;
 }
 [data-testid="stSidebar"] .stMarkdown p,
 [data-testid="stSidebar"] .stCaption,
-[data-testid="stSidebar"] label,
-[data-testid="stSidebar"] span {
-    color: #c8ccd8 !important;
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] label {
+    color: #555555 !important;
 }
 [data-testid="stSidebar"] h1 {
-    color: white !important;
-    font-size: 1.25rem !important;
+    color: #2D2D2D !important;
+    font-size: 1.2rem !important;
 }
 
-/* ─── Cards ───────────────────────────────────────────── */
-.card {
-    background: #1a1d2e;
-    border: 1px solid #252838;
-    border-radius: 14px;
-    padding: 24px 28px;
-    height: 100%;
-}
-
-/* ─── Section labels ──────────────────────────────────── */
-.section-label {
-    color: #4FC3F7;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    margin: 0 0 12px 0;
-}
-
-/* ─── Tip card — left blue accent ─────────────────────── */
-.tip-card {
-    background: #1a1d2e;
-    border: 1px solid #252838;
-    border-left: 4px solid #4FC3F7;
-    border-radius: 14px;
-    padding: 22px 28px;
-}
-
-/* ─── Chart image rounding ────────────────────────────── */
-[data-testid="stImage"] > img {
-    border-radius: 14px;
-}
-
-/* ─── Subtle dividers ─────────────────────────────────── */
+/* ─── Dividers ────────────────────────────────────── */
 hr {
     border: none !important;
-    border-top: 1px solid #252838 !important;
-    margin: 28px 0 !important;
+    border-top: 1px solid #E8E8E8 !important;
+    margin: 24px 0 !important;
+}
+
+/* ─── Chart image rounding ────────────────────────── */
+[data-testid="stImage"] > img {
+    border-radius: 12px;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-# Per-tier card colours (background, border/text accent)
 CARD_THEME = {
-    "Low Risk":    {"bg": "#0b1f14", "accent": "#27ae60"},
-    "Medium Risk": {"bg": "#1f1505", "accent": "#e67e22"},
-    "High Risk":   {"bg": "#1f0808", "accent": "#e74c3c"},
+    "Low Risk":    {"bg": "#D4EDD9", "text": "#2d6e44", "bar": "#5a9e72"},
+    "Medium Risk": {"bg": "#FDF3CC", "text": "#7a5c10", "bar": "#c9971e"},
+    "High Risk":   {"bg": "#FAD8D8", "text": "#a83228", "bar": "#d94f45"},
 }
 
 FEAT_DISPLAY = [
@@ -121,10 +92,33 @@ FEAT_COLS = FEAT_DISPLAY + ["num_claims"]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+def card(body: str, *, extra_style: str = "") -> str:
+    """Reusable white rounded card with light border and box shadow."""
+    return (
+        f'<div style="background:white; border:1px solid #E8E8E8; border-radius:12px;'
+        f' padding:24px 28px; box-shadow:0 1px 6px rgba(0,0,0,0.05);'
+        f' {extra_style}">{body}</div>'
+    )
+
+
+def section_label(text: str, color: str = "#7BAE8A") -> str:
+    return (
+        f'<p style="color:{color}; font-size:0.72rem; font-weight:700;'
+        f' letter-spacing:0.15em; text-transform:uppercase; margin:0 0 12px 0;">'
+        f"{text}</p>"
+    )
+
+
+def md_bold(text: str, color: str = "#8AAFC7") -> str:
+    """Convert **markdown bold** → <strong> with accent colour."""
+    return re.sub(r"\*\*(.+?)\*\*",
+                  rf'<strong style="color:{color}; font-weight:700;">\1</strong>',
+                  text)
+
+
 def next_level_message(
     risk_score: int, risk_label: str, days_safe: int, level: str
 ) -> str:
-    """One-line description of what the driver needs to reach the next tier."""
     if "Diamond" in level:
         return "🏆 You've reached the top tier — keep up the excellent driving!"
 
@@ -152,43 +146,40 @@ def next_level_message(
     return f"You are 🥉 Bronze — {need} away from 🥈 Silver"
 
 
-def md_to_html_bold(text: str, color: str = "#4FC3F7") -> str:
-    """Convert **markdown bold** to <strong> tags with an accent colour."""
-    return re.sub(r"\*\*(.+?)\*\*", rf'<strong style="color:{color};">\1</strong>', text)
-
-
 def behavior_chart(driver_row: pd.Series, fleet_avg: pd.Series) -> plt.Figure:
-    """Five dark-themed mini bar charts: driver vs fleet average per feature."""
-    BG     = "#1a1d2e"
-    BORDER = "#2a2d3e"
-    TEXT   = "#c8ccd8"
-    ACCENT = "#4FC3F7"
+    """Clean minimal bar chart — sage green / dusty rose, no gridlines."""
+    BG    = "#FAFAFA"
+    ABOVE = "#E8A598"   # dusty rose — above average (worse)
+    BELOW = "#7BAE8A"   # sage green — below average (better)
+    FLEET = "#D5D8DC"   # light grey — fleet reference
+    TEXT  = "#666666"
+    TITLE = "#2D2D2D"
 
-    fig, axes = plt.subplots(1, len(FEAT_DISPLAY), figsize=(13, 3.8))
+    fig, axes = plt.subplots(1, len(FEAT_DISPLAY), figsize=(13, 3.6))
     fig.patch.set_facecolor(BG)
 
     for ax, feat in zip(axes, FEAT_DISPLAY):
         d_val = float(driver_row[feat])
         f_val = float(fleet_avg[feat])
-        bar_color = "#e74c3c" if d_val > f_val else "#27ae60"
+        bar_color = ABOVE if d_val > f_val else BELOW
 
         ax.set_facecolor(BG)
         ax.bar(
             ["You", "Fleet"],
             [d_val, f_val],
-            color=[bar_color, "#3a4060"],
-            edgecolor=BORDER,
-            linewidth=0.5,
-            width=0.55,
+            color=[bar_color, FLEET],
+            edgecolor="none",
+            width=0.52,
         )
-        ax.set_title(FEAT_LABELS[feat], fontsize=9, fontweight="bold",
-                     color=ACCENT, pad=5)
-        ax.tick_params(axis="x", labelsize=8,   colors=TEXT)
-        ax.tick_params(axis="y", labelsize=7.5, colors=TEXT)
-        ax.grid(axis="y", alpha=0.15, linewidth=0.5, color=TEXT)
+        # Rounded bar tops via a thin matching rect — skip, keep it clean
+        ax.set_title(FEAT_LABELS[feat], fontsize=9, fontweight="600",
+                     color=TITLE, pad=6)
+        ax.tick_params(axis="x", labelsize=8, colors=TEXT, length=0)
+        ax.tick_params(axis="y", labelsize=7.5, colors=TEXT, length=0)
         ax.set_axisbelow(True)
+        ax.grid(False)
         for spine in ax.spines.values():
-            spine.set_edgecolor(BORDER)
+            spine.set_visible(False)
 
         y_max = max(d_val, f_val, 0.1)
         for bar in ax.patches:
@@ -201,13 +192,13 @@ def behavior_chart(driver_row: pd.Series, fleet_avg: pd.Series) -> plt.Figure:
                 h + y_max * 0.04,
                 lbl,
                 ha="center", va="bottom",
-                fontsize=8.5, fontweight="bold", color=TEXT,
+                fontsize=8.5, fontweight="600", color=TEXT,
             )
 
     legend_handles = [
-        mpatches.Patch(color="#e74c3c", label="Above fleet avg"),
-        mpatches.Patch(color="#27ae60", label="Below fleet avg"),
-        mpatches.Patch(color="#3a4060", label="Fleet average"),
+        mpatches.Patch(color=ABOVE, label="Above fleet avg"),
+        mpatches.Patch(color=BELOW, label="Below fleet avg"),
+        mpatches.Patch(color=FLEET, label="Fleet average"),
     ]
     fig.legend(
         handles=legend_handles,
@@ -256,39 +247,41 @@ level_emoji, level_name = driver_level.split(" ", 1)
 progress_msg    = next_level_message(risk_score, risk_label, days_safe, driver_level)
 
 # ═════════════════════════════════════════════════════════════════════════════
-# 1 · HEADER — level badge + driver ID
+# 1 · HEADER — level badge
 # ═════════════════════════════════════════════════════════════════════════════
-st.markdown(f"""
-<div class="card" style="text-align:center; padding:44px 32px;">
-    <div style="font-size:5rem; line-height:1; margin-bottom:10px;">{level_emoji}</div>
-    <div style="font-size:2.4rem; font-weight:900; color:white;
-                letter-spacing:0.01em;">{level_name}</div>
-    <div style="font-size:0.95rem; color:#4FC3F7; font-weight:700;
-                letter-spacing:0.16em; margin-top:10px;
-                text-transform:uppercase;">{driver_id}</div>
-</div>
-""", unsafe_allow_html=True)
+st.markdown(card(f"""
+    <div style="text-align:center; padding:32px 0 24px 0;">
+        <div style="font-size:4.5rem; line-height:1; margin-bottom:12px;">{level_emoji}</div>
+        <div style="font-size:1.8rem; font-weight:600; color:#888888;
+                    letter-spacing:0.01em;">{level_name}</div>
+        <div style="font-size:0.85rem; color:#8AAFC7; font-weight:600;
+                    letter-spacing:0.16em; margin-top:10px;
+                    text-transform:uppercase;">{driver_id}</div>
+    </div>
+"""), unsafe_allow_html=True)
 
 st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
 
 # ═════════════════════════════════════════════════════════════════════════════
-# 2 · RISK SCORE — colored metric card + progress bar
+# 2 · RISK SCORE
 # ═════════════════════════════════════════════════════════════════════════════
 _, col_mid, _ = st.columns([1, 2, 1])
 with col_mid:
     st.markdown(f"""
-    <div style="background:{theme['bg']}; border:2px solid {theme['accent']};
-                border-radius:16px; padding:40px 32px; text-align:center;">
-        <p class="section-label" style="color:{theme['accent']};">Risk Score</p>
-        <div style="font-size:6rem; font-weight:900; color:{theme['accent']};
+    <div style="background:{theme['bg']}; border-radius:16px;
+                padding:40px 32px; text-align:center;
+                box-shadow:0 1px 6px rgba(0,0,0,0.05);">
+        {section_label("Risk Score", color=theme['text'])}
+        <div style="font-size:6rem; font-weight:900; color:{theme['text']};
                     line-height:0.95;">{risk_score}</div>
-        <div style="font-size:1.6rem; color:#3a3d4e; margin-top:2px;">/ 100</div>
-        <div style="font-size:1.15rem; font-weight:700; color:{theme['accent']};
+        <div style="font-size:1.5rem; color:{theme['text']}; opacity:0.45;
+                    margin-top:2px;">/ 100</div>
+        <div style="font-size:1.1rem; font-weight:600; color:{theme['text']};
                     margin-top:14px;">{risk_label_full}</div>
-        <div style="background:#0a0c14; border-radius:8px; height:12px;
-                    margin:20px 0 0 0; overflow:hidden;">
-            <div style="background:{theme['accent']}; width:{risk_score}%;
-                        height:100%; border-radius:8px;"></div>
+        <div style="background:rgba(0,0,0,0.08); border-radius:6px; height:8px;
+                    margin:18px 0 0 0; overflow:hidden;">
+            <div style="background:{theme['bar']}; width:{risk_score}%;
+                        height:100%; border-radius:6px;"></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -296,10 +289,9 @@ with col_mid:
 st.markdown("<div style='height:28px;'></div>", unsafe_allow_html=True)
 
 # ═════════════════════════════════════════════════════════════════════════════
-# 3 · DRIVING BEHAVIOR — dark-themed 5-panel chart
+# 3 · DRIVING BEHAVIOR
 # ═════════════════════════════════════════════════════════════════════════════
-st.markdown('<p class="section-label">Driving Behavior vs. Fleet Average</p>',
-            unsafe_allow_html=True)
+st.markdown(section_label("Driving Behavior vs. Fleet Average"), unsafe_allow_html=True)
 fig = behavior_chart(driver_row, fleet_avg)
 st.pyplot(fig, use_container_width=True)
 plt.close(fig)
@@ -307,42 +299,38 @@ plt.close(fig)
 st.markdown("<div style='height:28px;'></div>", unsafe_allow_html=True)
 
 # ═════════════════════════════════════════════════════════════════════════════
-# 4 · STREAK & GAMIFICATION — two cards side by side
+# 4 · STREAK & GAMIFICATION
 # ═════════════════════════════════════════════════════════════════════════════
-st.markdown('<p class="section-label">Streak &amp; Gamification</p>',
-            unsafe_allow_html=True)
+st.markdown(section_label("Streak &amp; Gamification"), unsafe_allow_html=True)
 
 col_streak, col_level = st.columns(2)
 
 with col_streak:
-    st.markdown(f"""
-    <div class="card">
-        <p class="section-label">🔥 Driving Streak</p>
-        <p style="font-size:1.1rem; margin:0; color:white;
-                  font-weight:500; line-height:1.5;">{streak_message}</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(card(f"""
+        {section_label("🔥 Driving Streak")}
+        <p style="font-size:1.05rem; margin:0; color:#2D2D2D;
+                  font-weight:500; line-height:1.6;">{streak_message}</p>
+    """), unsafe_allow_html=True)
 
 with col_level:
-    progress_html = md_to_html_bold(progress_msg)
     icon = "💎" if "Diamond" in driver_level else "🎯"
-    st.markdown(f"""
-    <div class="card">
-        <p class="section-label">{icon} Level Progress</p>
-        <p style="font-size:0.98rem; margin:0; color:#c8ccd8;
-                  line-height:1.65;">{progress_html}</p>
-    </div>
-    """, unsafe_allow_html=True)
+    progress_html = md_bold(progress_msg, color="#8AAFC7")
+    st.markdown(card(f"""
+        {section_label(f"{icon} Level Progress")}
+        <p style="font-size:0.97rem; margin:0; color:#555555;
+                  line-height:1.7;">{progress_html}</p>
+    """), unsafe_allow_html=True)
 
 st.markdown("<div style='height:28px;'></div>", unsafe_allow_html=True)
 
 # ═════════════════════════════════════════════════════════════════════════════
-# 5 · PERSONALIZED TIP — blue-accent card
+# 5 · PERSONALIZED TIP — soft lavender card
 # ═════════════════════════════════════════════════════════════════════════════
 st.markdown(f"""
-<div class="tip-card">
-    <p class="section-label" style="color:#4FC3F7;">💡 Personalized Tip</p>
-    <p style="font-size:1rem; margin:0; color:#e0e0e0; line-height:1.7;">{tip}</p>
+<div style="background:#EDE8F5; border-radius:12px; padding:24px 28px;
+            box-shadow:0 1px 6px rgba(0,0,0,0.04);">
+    {section_label("💡 Personalized Tip", color="#7B6CA0")}
+    <p style="font-size:1rem; margin:0; color:#3d3050; line-height:1.75;">{tip}</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -351,7 +339,7 @@ st.markdown(f"""
 # ═════════════════════════════════════════════════════════════════════════════
 st.markdown("""
 <div style="text-align:center; padding:52px 0 16px 0;
-            color:#2e3248; font-size:0.8rem; letter-spacing:0.03em;">
+            color:#BBBBBB; font-size:0.78rem; letter-spacing:0.03em;">
     Built by Camila Rojas &nbsp;•&nbsp;
     Inspired by a conversation with Intact's data science team &nbsp;•&nbsp;
     Synthetic data only
