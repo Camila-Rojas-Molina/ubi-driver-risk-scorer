@@ -64,6 +64,21 @@ hr {
 [data-testid="stImage"] > img {
     border-radius: 12px;
 }
+
+/* ─── Expander ────────────────────────────────────── */
+[data-testid="stExpander"] {
+    background: white !important;
+    border: 1px solid #E8E8E8 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.04) !important;
+    overflow: hidden;
+}
+details summary {
+    color: #2D2D2D !important;
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
+}
+details summary:hover { color: #7BAE8A !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -287,6 +302,57 @@ with col_mid:
     """, unsafe_allow_html=True)
 
 st.markdown("<div style='height:28px;'></div>", unsafe_allow_html=True)
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 2b · HOW YOUR SCORE WAS CALCULATED
+# ═════════════════════════════════════════════════════════════════════════════
+with st.expander("🔍 See the feature engineering behind your score"):
+    eng_rows = [
+        ("Lat/Long + Timestamp",               "Average Speed (km/h)",  f"{driver_row['avg_speed']:.1f} km/h"),
+        ("Lat/Long + Timestamp",               "Max Speed (km/h)",      f"{driver_row['max_speed']:.1f} km/h"),
+        ("Speed between consecutive points",   "Harsh Braking Events",  f"{int(driver_row['harsh_braking_count'])}"),
+        ("Bearing between consecutive points", "Recklessness Score (°)",f"{driver_row['recklessness_score']:.1f}°"),
+        ("All trips combined",                 "Trips Recorded",        f"{int(driver_row['trips_recorded'])}"),
+    ]
+
+    tbody = ""
+    for i, (raw, feat, val) in enumerate(eng_rows):
+        row_bg = "#FAFAFA" if i % 2 == 0 else "#FFFFFF"
+        tbody += (
+            f'<tr style="background:{row_bg};">'
+            f'<td style="padding:10px 14px; color:#888888; font-size:0.87rem;'
+            f'           border-bottom:1px solid #F0F0F0;">{raw}</td>'
+            f'<td style="padding:10px 14px; color:#2D2D2D; font-weight:500; font-size:0.87rem;'
+            f'           border-bottom:1px solid #F0F0F0;">{feat}</td>'
+            f'<td style="padding:10px 14px; text-align:right; font-weight:700; font-size:0.9rem;'
+            f'           color:#2D2D2D; border-bottom:1px solid #F0F0F0;">{val}</td>'
+            f"</tr>"
+        )
+
+    th = (
+        'style="text-align:{align}; padding:11px 14px; color:#7BAE8A; font-size:0.70rem;'
+        ' font-weight:700; letter-spacing:0.13em; text-transform:uppercase;'
+        ' border-bottom:2px solid #E8E8E8;"'
+    )
+    st.markdown(f"""
+    <table style="width:100%; border-collapse:collapse; border-radius:10px;
+                  overflow:hidden; border:1px solid #EEEEEE;">
+        <thead>
+            <tr style="background:#F5F5F5;">
+                <th {th.format(align="left")}>Raw Data</th>
+                <th {th.format(align="left")}>Engineered Feature</th>
+                <th {th.format(align="right")}>Your Value</th>
+            </tr>
+        </thead>
+        <tbody>{tbody}</tbody>
+    </table>
+    <p style="font-size:0.80rem; color:#AAAAAA; font-style:italic; margin:14px 0 2px 0;">
+        Features derived from raw GPS telematics data (latitude, longitude, timestamp)
+        using haversine distance and compass bearing calculations.
+    </p>
+    """, unsafe_allow_html=True)
+
+st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # 3 · DRIVING BEHAVIOR
